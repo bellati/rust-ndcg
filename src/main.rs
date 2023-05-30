@@ -1,10 +1,13 @@
 use std::fs;
+use std::env;
 
 fn main() {
-    let filename = "file.txt";
+    let args: Vec<String> = env::args().collect();
+    let input_file = &args[1];
+    let output_file = &args[2];
 
     let contents =
-        fs::read_to_string(filename)
+        fs::read_to_string(input_file)
             .unwrap();
 
     let mut instances: Vec<Instance> = contents.lines().map(parse_line).collect();
@@ -12,7 +15,7 @@ fn main() {
 
     let ndcg_value = calculate_ndcg(instances);
 
-    println!("{}", ndcg_value);
+    let _ = fs::write(output_file, ndcg_value.to_string());
 }
 
 fn parse_line(line: &str) -> Instance {
@@ -127,6 +130,7 @@ fn calculate_dcg(instances: &[Instance]) -> WeightedValue {
 }
 
 
+#[derive(PartialEq, Debug)]
 struct Instance {
     query_id: i32,
     weight: f32,
@@ -137,4 +141,108 @@ struct Instance {
 struct WeightedValue {
     value: f32,
     weight: f32
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse() {
+        assert_eq!(parse_line("123 0.93 2 0.82"), Instance { query_id: 123, weight: 0.93, relevancy: 2.0, score: 0.82 });
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_missing_values() {
+        parse_line("123 -0.83 2");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_too_many_values() {
+        parse_line("123 -0.83 2 0.82 1.23");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_negative_weight() {
+        parse_line("123 -0.83 2 0.82");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_zero_weight() {
+        parse_line("123 0.0 2 0.82");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_parse_negative_relevancy() {
+        parse_line("123 0.98 -1 0.85");
+    }
+
+    #[test]
+    fn test_parse_zero_relevancy() {
+        assert_eq!(parse_line("123 1.23 0 0.85").relevancy, 0.0);
+    }
+
+    #[test]
+    fn test_calculate_ndcg_single() {
+        let instances = &mut vec![
+            Instance { query_id: 0, weight: 0.82, relevancy: 1.0, score: 2.34 },
+            Instance { query_id: 0, weight: 1.23, relevancy: 0.0, score: 2.58 }
+        ];
+        // remember that the weight is defined per query
+        //
+        // the ndcg should be
+        // 1 / log2(3) / 1 = 0.63093
+        assert!((calculate_ndcg(instances) - 0.63093).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_calculate_ndcg() {
+        let instances = &mut vec![
+            Instance { query_id: 0, weight: 0.82, relevancy: 1.0, score: 2.34 },
+            Instance { query_id: 0, weight: 1.23, relevancy: 0.0, score: 2.58 },
+            Instance { query_id: 1, weight: 5.00, relevancy: 2.0, score: 1.23 },
+            Instance { query_id: 1, weight: 0.01, relevancy: 1.0, score: 0.8  }
+        ];
+        // remember that the weight is defined per query
+        //
+        // the first query, the ndcg should be
+        // 1 / log2(3) / 1 = 0.63093
+        // the second query, the ndcg should be 1 as the order is correct
+        //
+        // the weight for the queries is
+        // 2.05 and 5.01, which totals to 7.06.
+        //
+        // ndcg should be approximately
+        // (2.05 * 0.63093 + 5.01 * 1) / 7.06 = 0.8928
+        assert!((calculate_ndcg(instances) - 0.8928).abs() < 0.001);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_non_monotonic_query_ids() {
+        let instances = &mut vec![
+            Instance { query_id: 1, weight: 0.01, relevancy: 1.0, score: 0.8  },
+            Instance { query_id: 1, weight: 5.00, relevancy: 2.0, score: 1.23 },
+            Instance { query_id: 0, weight: 0.82, relevancy: 1.0, score: 2.34 },
+            Instance { query_id: 0, weight: 1.23, relevancy: 0.0, score: 2.58 }
+        ];
+
+        calculate_ndcg(instances);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_only_zero_relevancy() {
+        let instances = &mut vec![
+            Instance { query_id: 1, weight: 0.01, relevancy: 0.0, score: 0.8  },
+            Instance { query_id: 1, weight: 5.00, relevancy: 0.0, score: 1.23 }
+        ];
+
+        calculate_ndcg(instances);
+    }
 }
