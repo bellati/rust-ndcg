@@ -28,7 +28,7 @@ fn parse_line(line: &str) -> Instance {
     assert!(relevancy >= 0.0);
 
     return Instance {
-        query_id: values[0].parse().unwrap(),
+        query_id: values[0].parse::<f32>().unwrap() as i32,
         weight: weight,
         relevancy: relevancy,
         score: values[3].parse().unwrap()
@@ -180,6 +180,16 @@ mod tests {
     #[should_panic]
     fn test_parse_negative_relevancy() {
         parse_line("123 0.98 -1 0.85");
+    }
+
+    #[test]
+    fn test_parse_float_query_id() {
+        assert_eq!(parse_line("123.0 0.98 1 0.85").query_id, 123);
+    }
+
+    #[test]
+    fn test_parse_split_on_spaces() {
+        parse_line("1 1.0 0        0.85");
     }
 
     #[test]
