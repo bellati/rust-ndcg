@@ -205,8 +205,8 @@ mod tests {
         let instances = &mut vec![
             Instance { query_id: 0, weight: 0.82, relevancy: 1.0, score: 2.34 },
             Instance { query_id: 0, weight: 1.23, relevancy: 0.0, score: 2.58 },
-            Instance { query_id: 1, weight: 5.00, relevancy: 2.0, score: 1.23 },
-            Instance { query_id: 1, weight: 0.01, relevancy: 1.0, score: 0.8  }
+            Instance { query_id: 1, weight: 2.56, relevancy: 2.0, score: 1.23 },
+            Instance { query_id: 1, weight: 2.46, relevancy: 1.0, score: 0.8  }
         ];
         // remember that the weight is defined per query
         //
@@ -215,11 +215,11 @@ mod tests {
         // the second query, the ndcg should be 1 as the order is correct
         //
         // the weight for the queries is
-        // 2.05 and 5.01, which totals to 7.06.
+        // 2.05 and 5.02, which totals to 7.07.
         //
         // ndcg should be approximately
-        // (2.05 * 0.63093 + 5.01 * 1) / 7.06 = 0.8928
-        assert!((calculate_ndcg(instances) - 0.8928).abs() < 0.001);
+        // (2.05 * 0.63093 + 5.02) / 7.07 = 0.8933644
+        assert!((calculate_ndcg(instances) - 0.8933644).abs() < 0.001);
     }
 
     #[test]
