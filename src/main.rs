@@ -19,7 +19,7 @@ fn main() {
 }
 
 fn parse_line(line: &str) -> Instance {
-    let values: Vec<&str> = line.split(' ').collect();
+    let values: Vec<&str> = line.split_whitespace().collect();
     assert_eq!(values.len(), 4);
 
     let weight: f32 = values[1].parse().unwrap();
