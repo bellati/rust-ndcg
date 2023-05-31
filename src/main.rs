@@ -28,7 +28,7 @@ fn parse_line(line: &str) -> Instance {
     assert!(relevancy >= 0.0);
 
     return Instance {
-        query_id: values[0].parse::<f32>().unwrap() as i32,
+        query_id: values[0].parse::<f64>().unwrap() as i64,
         weight: weight,
         relevancy: relevancy,
         score: values[3].parse().unwrap()
@@ -37,7 +37,7 @@ fn parse_line(line: &str) -> Instance {
 
 fn calculate_ndcg(instances: &mut Vec<Instance>) -> f32 {
     let mut i: usize = 0;
-    let mut curr_qid: i32; // curr qid
+    let mut curr_qid: i64; // curr qid
     let mut size: usize; // number of elements in the current qid
 
     let mut ndcg_acc: f32 = 0.0;
@@ -92,6 +92,22 @@ fn calculate_query_ndcg(instances: &mut Vec<Instance>, start: usize, end: usize)
 
     let curr_instances = &mut instances[start..end];
 
+    // does not calculate any score if there is only one label present
+    let first_relevancy = curr_instances[0].relevancy;
+    let mut multi_label = false;
+    for instance in &mut *curr_instances {
+        if instance.relevancy != first_relevancy {
+            multi_label = true;
+            break;
+        }
+    }
+    if !multi_label {
+        return WeightedValue {
+            value: 0.0,
+            weight: 0.0
+        }
+    }
+
     // orders the current instances by relevancy in descending order
     curr_instances.sort_by(|a, b| b.relevancy.total_cmp(&a.relevancy));
 
@@ -137,7 +153,7 @@ fn calculate_dcg(instances: &[Instance]) -> WeightedValue {
 
 #[derive(PartialEq, Debug)]
 struct Instance {
-    query_id: i32,
+    query_id: i64,
     weight: f32,
     relevancy: f32,
     score: f32
@@ -251,14 +267,15 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn test_only_zero_relevancy() {
-        let instances = &mut vec![
+    fn test_ignore_queries_with_single_relevancy() {
+        let instances: &mut Vec<Instance> = &mut vec![
             Instance { query_id: 1, weight: 0.01, relevancy: 0.0, score: 0.8  },
-            Instance { query_id: 1, weight: 5.00, relevancy: 0.0, score: 1.23 }
+            Instance { query_id: 1, weight: 5.00, relevancy: 0.0, score: 1.23 },
+            Instance { query_id: 2, weight: 1.43, relevancy: 1.0, score: 1.0 },
+            Instance { query_id: 2, weight: 1.22, relevancy: 1.0, score: 1.0 }
         ];
 
-        calculate_ndcg(instances);
+        assert!(calculate_ndcg(instances).is_nan());
     }
 
     #[test]
