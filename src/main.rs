@@ -174,6 +174,11 @@ mod tests {
     }
 
     #[test]
+    fn test_parse_big_query_id() {
+        assert_eq!(parse_line("833223657453.00000 0.12500 0.00000 0.00000").query_id, 833223657453);
+    }
+
+    #[test]
     #[should_panic]
     fn test_parse_missing_values() {
         parse_line("123 -0.83 2");
@@ -267,7 +272,7 @@ mod tests {
     }
 
     #[test]
-    fn test_ignore_queries_with_single_relevancy() {
+    fn test_no_instance() {
         let instances: &mut Vec<Instance> = &mut vec![
             Instance { query_id: 1, weight: 0.01, relevancy: 0.0, score: 0.8  },
             Instance { query_id: 1, weight: 5.00, relevancy: 0.0, score: 1.23 },
@@ -276,6 +281,19 @@ mod tests {
         ];
 
         assert!(calculate_ndcg(instances).is_nan());
+    }
+
+    #[test]
+    fn test_ignore_queries_with_single_relevancy() {
+        let instances: &mut Vec<Instance> = &mut vec![
+            Instance { query_id: 1, weight: 0.01, relevancy: 1.0, score: 0.8 },
+            Instance { query_id: 2, weight: 1.43, relevancy: 1.0, score: 1.0 },
+            Instance { query_id: 2, weight: 1.32, relevancy: 1.0, score: 1.0 },
+            Instance { query_id: 2, weight: 1.22, relevancy: 0.0, score: 1.0 },
+            Instance { query_id: 2, weight: 1.00, relevancy: 0.0, score: 1.0 }
+        ];
+
+        assert!((calculate_ndcg(instances) - 0.57064).abs() < 0.001);
     }
 
     #[test]
