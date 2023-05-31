@@ -99,7 +99,12 @@ fn calculate_query_ndcg(instances: &mut Vec<Instance>, start: usize, end: usize)
     let idcg = calculate_dcg(curr_instances);
     assert_ne!(idcg.value, 0.0);
 
-    // orders by predicted descending order
+    // we sort by relevancies ascending
+    curr_instances.reverse();
+    // then we sort by the predicted score in descending order
+    // note that `sort_by` method is stable so, in case of a tie,
+    // the relevancy ascending order is maintained
+    // this helps us penalize ties
     curr_instances.sort_by(|a, b| b.score.total_cmp(&a.score));
 
     // calculates dcg
@@ -254,5 +259,26 @@ mod tests {
         ];
 
         calculate_ndcg(instances);
+    }
+
+    #[test]
+    fn test_ties() {
+        // in both examples, the ndcg score should be the same
+        let instances1 = &mut vec![
+            Instance { query_id: 1, weight: 1.0, relevancy: 1.0, score: 0.8 },
+            Instance { query_id: 1, weight: 1.0, relevancy: 0.0, score: 0.8 }
+        ];
+
+        let instances2 = &mut vec![
+            Instance { query_id: 1, weight: 1.0, relevancy: 0.0, score: 0.8 },
+            Instance { query_id: 1, weight: 1.0, relevancy: 1.0, score: 0.8 }
+        ];
+
+
+        let ndcg1 = calculate_ndcg(instances1);
+        let ndcg2 = calculate_ndcg(instances2);
+        let expected: f32 = 0.63093;
+
+        assert!((ndcg1 - expected).abs() < 0.001 && (ndcg2 - expected).abs() < 0.001)
     }
 }
